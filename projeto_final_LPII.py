@@ -8,6 +8,7 @@ import os
 
 def main():
     try:
+        gera_temp()
         menu_principal()
     except Exception as e:
         print(f"Erro de execução:\n{e}")
@@ -15,9 +16,46 @@ def main():
 
 def arquivo_usuarios():
     """
-    Coleta o endereço onde está localizado o arquivo .json
+    Coleta o endereço onde está localizado o arquivo .json original
     """
     return os.path.join(os.getcwd(), 'projetoModuloII.json')
+
+
+def arquivo_temp():
+    """
+    Coleta o endereço onde está localizado o arquivo .json temporario
+    """
+    return os.path.join(os.getcwd(), 'temp.json')
+
+
+def gera_temp():
+    """
+    Gera o arquivo temp.json para informações temporárias
+    """
+    dados_temp = usuarios_json_original()
+    grava_temp(dados_temp)
+
+
+def grava_temp(dados: dict):
+    """
+    Gragação dos dados no arquivo temporário
+    """
+    with open(arquivo_temp(), 'w', encoding='UTF-8') as json_file:
+        json_file.write(json.dumps(dados, indent=4, ensure_ascii=False))
+
+
+def commit_final():
+    """
+    Grava os dados do arquivo temporário no arquivo definitivo
+    O arquivo temporário será removido
+    """
+    with open(arquivo_temp(), 'r', encoding='UTF-8') as temp_file:
+        dados_temp = json.load(temp_file)
+
+    with open(arquivo_usuarios(), 'w', encoding='UTF-8') as json_file:
+        json_file.write(json.dumps(dados_temp, indent=4, ensure_ascii=False))
+
+    os.remove(arquivo_temp())
 
 
 def menu_principal():
@@ -51,11 +89,21 @@ def menu_principal():
             switch_menu.get(opcao)()
     
 
-def usuarios_json():
+def usuarios_json_original():
     """
-    Carrega o arquivo json com as informações em formato dict
+    Carrega o arquivo .json original com as informações em formato dict
     """
     with open(arquivo_usuarios(), 'r', encoding='UTF-8') as json_file:
+        conteudo = json_file.read()
+        dados = json.loads(conteudo)
+    return dados
+
+
+def usuarios_json_temp():
+    """
+    Carrega o arquivo .json temporario com as informações em formato dict
+    """
+    with open(arquivo_temp(), 'r', encoding='UTF-8') as json_file:
         conteudo = json_file.read()
         dados = json.loads(conteudo)
     return dados
@@ -69,7 +117,7 @@ def atualiza_usuario():
     atualiza_id = None
     while atualiza_id is None:
         atualiza_id = input("Insira o ID do usuário (0 para cancelar): ")
-        dados = usuarios_json()
+        dados = usuarios_json_temp()
         if atualiza_id == '0':
             pass
         elif dados.get(atualiza_id) is None:
@@ -118,7 +166,7 @@ def busca_usuario(nome: str, telefone: str, endereco: str):
         telefone = "Não Informado"
     if len(endereco) == 0:
         endereco = "Não Informado"
-    dict_usuarios = usuarios_json()
+    dict_usuarios = usuarios_json_temp()
     for id, usuario in dict_usuarios.items():
         if all((usuario["Nome"] == nome,
                 usuario["Telefone"] == telefone,
@@ -135,7 +183,7 @@ def processa_atualizacao_usuario(id: str,
     """
     Atualiza o usuário de ID fornecido com as demais informações fornecidas
     """
-    dict_usuarios = usuarios_json()
+    dict_usuarios = usuarios_json_temp()
     if nome is not None:
         dict_usuarios[id]['Nome'] = nome
     
@@ -148,15 +196,14 @@ def processa_atualizacao_usuario(id: str,
     if status is not None:
         dict_usuarios[id]['Status'] = status
 
-    with open(arquivo_usuarios(), 'w', encoding='UTF-8') as json_file:
-        json_file.write(json.dumps(dict_usuarios, indent=4, ensure_ascii=False))
+    grava_temp(dict_usuarios)
 
 
 def insere_usuario():
     """
     Insere um usuário novo ou o reativa caso os dados já existam
     """
-    dados = usuarios_json()
+    dados = usuarios_json_temp()
     continua_cadastro = True
 
     while continua_cadastro:
@@ -184,8 +231,7 @@ def insere_usuario():
                 novo_usuario['Endereço'] = novo_endereco
             
             dados[novo_id] = novo_usuario
-            with open(arquivo_usuarios(), 'w', encoding='UTF-8') as json_file:
-                json_file.write(json.dumps(dados, indent=4, ensure_ascii=False))
+            grava_temp(dados)
             
             print(f"Novo usuário de ID {novo_id} cadastrado com sucesso!")
 
@@ -195,14 +241,13 @@ def insere_usuario():
         
         continua_cadastro = '1' == input("\nDigite 1 para continuar cadastrando: ")
 
-    
 
 def informacoes_usuario():
     """
     Exibe informações de um usuário com base em um ID a ser informado
     """
     usuario = None
-    dict_usuarios = usuarios_json()
+    dict_usuarios = usuarios_json_temp()
     while usuario is None:
         id = input("Digite o ID do usuario que deseja informações: ")
         usuario = dict_usuarios.get(id)
@@ -248,7 +293,7 @@ def exibe_usuarios_formatado():
     texto = "--------------------------------------------------------------\n"\
             "------- Abaixo informações dos usuários já cadastrados -------\n"\
             "--------------------------------------------------------------\n"
-    for id, dados in usuarios_json().items():
+    for id, dados in usuarios_json_temp().items():
         texto += f"ID:\t\t\t{id}\n"\
                 f"Status:\t\t\t{'Ativo' if dados['Status'] else 'Inativo'}\n"\
                 f"Nome:\t\t\t{dados['Nome']}\n"\
@@ -260,11 +305,13 @@ def exibe_usuarios_formatado():
 
 def finaliza_execucao():
     """
-    Dados para exibir ao final da execução do programa
+    Transfere os dados temporários para o .json final
     """
-    print("--------------------------------\n"\
-          "----- Execução finalizada! -----\n"\
-          "--------------------------------")
+    commit_final()
+    print("------------------------------------------\n"\
+          "----- Todos os dados foram gravados! -----\n"\
+          "---------- Execução finalizada! ----------\n"\
+          "------------------------------------------")
 
 
 if __name__ == '__main__':
